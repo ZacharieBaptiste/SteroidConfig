@@ -1,0 +1,3 @@
+[]=dev,production
+
+#include config.included.txt

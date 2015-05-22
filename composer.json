@@ -1,0 +1,21 @@
+{
+    "name": "steroid/config",
+    "description": "Steroid Config",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Zacharie Baptiste",
+            "email": "zachariebaptiste7@gmail.com"
+        }
+    ],
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "4.0.*",
+        "squizlabs/php_codesniffer": "2.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "Steroid\\Config\\": "src"
+        }
+    }
+}
