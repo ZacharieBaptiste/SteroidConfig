@@ -67,7 +67,7 @@ class Config
 
     /* Multitone */
 
-    public static function instance($namespace = 'default')
+    public static function instance($namespace = 'default', array $config = [], $file_path = null)
     {
         if ($namespace === null) {
             if (self::$previous_namespace === null) {
@@ -78,7 +78,7 @@ class Config
         }
 
         if (!isset(self::$instances[$namespace])) {
-            return null;
+            return new Config($namespace, $config, $file_path);
         }
 
         self::$previous_namespace = $namespace;

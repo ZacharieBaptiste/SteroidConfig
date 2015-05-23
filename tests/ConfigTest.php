@@ -72,7 +72,7 @@ class ConfigTest extends \PHPUnit_Framework_TestCase
         $this->clearCacheDir();
         Config::clear();
 
-        $config = (new Config())->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
+        $config = Config::instance()->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
 
         $arr = $config->get();
 
@@ -93,7 +93,7 @@ class ConfigTest extends \PHPUnit_Framework_TestCase
         $this->assertFalse($this->cacheDirContainsCacheFiles(), "Cache files shouldn't exists");
 
         // First read, shouldn't be read from cache
-        $config = (new Config())->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
+        $config = Config::instance()->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
         $this->assertFalse($config->isReadFromCache(), "Config was read from cache");
 
         $arr = $config->get();
@@ -102,7 +102,7 @@ class ConfigTest extends \PHPUnit_Framework_TestCase
         Config::clear();
 
         // Re-read from config, check if read from cache
-        $config = (new Config())->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
+        $config = Config::instance()->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
         $this->assertTrue($this->cacheDirContainsCacheFiles(), "Cache file doesn't exists");
         $this->assertTrue($config->isReadFromCache(), "Config wasn't read from cache");
     }
@@ -114,7 +114,7 @@ class ConfigTest extends \PHPUnit_Framework_TestCase
         Config::clear();
 
         Config::setCacheDirectory(__DIR__ . DIRECTORY_SEPARATOR . 'cache');
-        (new Config())->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
+        Config::instance()->load(__DIR__ . DIRECTORY_SEPARATOR . 'files' . DIRECTORY_SEPARATOR . 'config.txt');
 
         $config = Config::instance();
         $this->assertTrue($config->get('dev.locale') === 'en_UK', 'Dev locale should be en_UK');
