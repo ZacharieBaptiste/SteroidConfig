@@ -19,8 +19,8 @@ abstract class Parser
         }
 
         $file = self::includeConf($conf, $chdir);
-        $definitions = array();
-        $pre_roots = array();
+        $definitions = [];
+        $pre_roots = [];
 
         for ($r = 0; $r < count($file); $r++) {
             $row = $file[$r];
@@ -31,25 +31,36 @@ abstract class Parser
                 continue;
             }
 
-            // Check for definitions
-            if (preg_match('/^([^\.]*\.)*\[\]=/', $row)) {
+            // Check for root definitions
+            if (preg_match('/^(\[[^]]+\])?\[\]=/', $row)) {
                 list ($keys, $values) = explode('=', $row);
-                $keys = substr($keys, 0, -2) . '@';
-                $keys = explode('.', $keys);
+
+                $parent_keys = trim(substr($keys, 0, -2), '[]');
                 $values = explode(',', $values);
+
                 $node = &$definitions;
-                foreach ($keys as $key) {
-                    if (!isset($node[$key])) {
-                        $node[$key] = array();
+
+                if (strlen($parent_keys)) {
+                    $parent_keys = explode('.', $parent_keys);
+                    foreach ($parent_keys as $key) {
+                        if (!isset($node[$key])) {
+                            $node[$key] = [];
+                        }
+                        $node = &$node[$key];
                     }
-                    $node = &$node[$key];
                 }
-                $node = $values;
+
+                $node['@'] = $values;
+
                 unset($node);
             } // Set current root
             elseif (preg_match('/^\[[^]]*\]$/', $row)) {
                 $pre_root_str = trim($row, '[]');
-                if (!empty($pre_root_str)) {
+                if (empty($pre_root_str)) {
+                    // Reset pre roots
+                    $pre_roots = [];
+                } else {
+                    // Set pre roots
                     $pre_roots = explode(',', $pre_root_str);
                     foreach ($pre_roots as $idx => $pr) {
                         $pre_roots[$idx] = explode('.', $pr);
@@ -61,30 +72,39 @@ abstract class Parser
                 $keys = explode('.', $keys);
 
                 // Check for value blocks
-                if (preg_match('/^\[((?P<filter>[a-z0-9_]+)\|)?$/', $value, $matches)) {
+                if (preg_match('/^\[((?P<filter>[a-zA-Z0-9_]+)\]\[)?$/', $value, $matches)) {
                     $filter = null;
                     if (isset($matches['filter'])) {
-                        if (is_callable("ConfigParser::{$matches['filter']}")) {
-                            $filter = $matches['filter'];
-                        }
+                        $filter = $matches['filter'];
                     }
 
                     $value_str = '';
                     while (true) {
                         $r++;
                         $rv = $file[$r];
-                        if (trim($rv) == ']') {
+                        if (trim($rv) === ']') {
                             break;
                         }
+
                         if (strlen($value_str)) {
                             $value_str .= "\n";
                         }
+
+                        // Fix escaped ]
+                        if (substr($rv, 0, 2) == '\]') {
+                            $rv = substr($rv, 1);
+                        }
+
                         $value_str .= $rv;
                     }
                     $value = trim($value_str);
 
                     if ($filter) {
-                        $value = Parser::$filter($value);
+                        $value = self::filter($value, $filter);
+                    }
+                } else {
+                    if ($value === '\[') {
+                        $value = substr($value, 1);
                     }
                 }
 
@@ -96,7 +116,7 @@ abstract class Parser
                         // If under current root, move pointer to leaf
                         foreach ($pr as $key) {
                             if (!isset($node[$key])) {
-                                $node[$key] = array();
+                                $node[$key] = [];
                             }
                             $node = &$node[$key];
                         }
@@ -104,7 +124,7 @@ abstract class Parser
                         // Move node to leaf
                         foreach ($keys as $key) {
                             if (!isset($node[$key])) {
-                                $node[$key] = array();
+                                $node[$key] = [];
                             }
                             $node = &$node[$key];
                         }
@@ -129,7 +149,7 @@ abstract class Parser
                     // Move node to leaf
                     foreach ($keys as $key) {
                         if (!isset($node[$key])) {
-                            $node[$key] = array();
+                            $node[$key] = [];
                         } elseif (!is_array($node[$key])) {
                             self::exception("Array node error: row:" . $row);
                         }
@@ -153,7 +173,7 @@ abstract class Parser
         }
 
         if (!isset($config)) {
-            return array();
+            return [];
         }
         $config = self::expandConfig($config, $definitions);
         return $config;
@@ -161,7 +181,7 @@ abstract class Parser
 
     private static function includeConf($conf, $chdir)
     {
-        $config = array();
+        $config = [];
 
         if (is_file($conf)) {
             $file = file($conf);
@@ -178,7 +198,7 @@ abstract class Parser
                     $file = $matches[1];
                 }
 
-                Config::merge($config, self::includeConf($file, $chdir));
+                self::merge($config, self::includeConf($file, $chdir));
             } else {
                 $row = preg_replace('/\s*#.*/', '', $row);
                 if (empty($row)) {
@@ -210,7 +230,7 @@ abstract class Parser
         }
 
         /* Only return values, $v that is array, is another definition */
-        $arr = array();
+        $arr = [];
         foreach ($node as $k => $v) {
             if (is_array($v)) {
                 break;
@@ -221,7 +241,7 @@ abstract class Parser
         return $arr;
     }
 
-    private static function expandConfig($config, $definitions, $trail = array())
+    private static function expandConfig($config, $definitions, $trail = [])
     {
         if (is_array($config)) {
             $star = false;
@@ -242,7 +262,7 @@ abstract class Parser
                         $original_config = $config[$d];
                         $config[$d] = self::expandConfig($star, $definitions, $arr);
 
-                        Config::merge(
+                        self::merge(
                             $config[$d],
                             self::expandConfig($original_config, $definitions, $arr)
                         );
@@ -265,7 +285,7 @@ abstract class Parser
 
                     if ($star) {
                         $config[$idx] = self::expandConfig($star, $definitions, $arr);
-                        Config::merge($config[$idx], self::expandConfig($node, $definitions, $arr));
+                        self::merge($config[$idx], self::expandConfig($node, $definitions, $arr));
                     } else {
                         $config[$idx] = self::expandConfig($node, $definitions, $arr);
                     }
@@ -277,6 +297,34 @@ abstract class Parser
         }
 
         return $config;
+    }
+
+    public static function merge(array &$dst_config, array $config)
+    {
+        foreach ($config as $key => $value) {
+            if (is_string($key)) {
+                if (is_array($value) && array_key_exists($key, $dst_config) && is_array($dst_config[$key])) {
+                    self::merge($dst_config[$key], $value);
+                } else {
+                    $dst_config[$key] = $value;
+                }
+            } else {
+                $dst_config[] = $value;
+            }
+        }
+    }
+
+    private static function filter($value, $filter)
+    {
+        if (method_exists(__CLASS__, $filter)) {
+            return self::$filter($value);
+        } else {
+            if (function_exists($filter) && is_callable($filter)) {
+                return call_user_func($filter, $value);
+            }
+        }
+
+        return null;
     }
 
     private static function exception($str)

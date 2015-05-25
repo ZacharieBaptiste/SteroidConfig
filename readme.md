@@ -12,14 +12,26 @@ $locale = $config->get('dev.locale');
 $locale = Config::instance()->get('dev.locale');
 ```
 
+Setting a root, usual if you defined roots in your config to separate dev and production or any other separation, all calls to the config will be prefixed with root.
+Root can be set in bootstrap when config is initialized.
+
+```php
+$config = Config::instance()->setRoot('dev');
+$locale = $config->get('locale');
+$locale = Config::instance()->get('locale');
+```
+
 #### Config file syntax:
-See tests, explanation coming soon.
+Documentation is still far from defined, all supported config's are listed and explained shortly in tests/files
 
 #### Todo:
 Finish readme.md
 
-
 #### Changelog:
+
+v1.1 - Added support for config roots
+	 - Added multiline support with filter support
+	 - More complete tests and config files with all supported syntaxes
 
 v1.0.1 - The instance multione also creates an instance if not already created
 

@@ -13,77 +13,92 @@ class Config
     private static $instances = [];
 
     private $config;
+    private $root;
     private $config_read_from_cache;
 
     private static $cache_enabled;
     private static $cache_dir;
 
-    private static $previous_namespace;
-
-    public function __construct($namespace = 'default', array $config = [], $file_path = null)
+    public function __construct($namespace = 'default')
     {
-        if (isset(self::$instances[$namespace])) {
+        if (is_string($namespace) && isset(self::$instances[$namespace])) {
             trigger_error(
-                __CLASS__ . " Config namespace '{$namespace}' has already been initialized, overwriting previous",
+                __CLASS__ . " namespace '{$namespace}' has already been initialized, overwriting previous",
                 E_USER_WARNING
             );
         }
 
-        $this->config_read_from_cache = false;
-        $this->config = $config;
+        $this->reset();
 
-        if ($file_path !== null) {
-            $this->load($file_path);
+        if (is_array($namespace)) {
+            $this->config = $namespace;
+        } else {
+            self::$instances[$namespace] = $this;
         }
-
-        self::$previous_namespace = $namespace;
-        self::$instances[$namespace] = $this;
     }
 
-    public static function clear($namespace = 'default')
+    public function reset()
     {
-        if (isset(self::$instances[$namespace])) {
-            unset(self::$instances[$namespace]);
-        }
+        $this->config_read_from_cache = false;
+        $this->config = [];
+        $this->root = null;
+
+        return $this;
+    }
+
+    public static function resetAll()
+    {
+        self::$instances = [];
     }
 
     public static function setCacheDirectory($path)
     {
         self::$cache_enabled = false;
-        self::$cache_dir = rtrim($path, DIRECTORY_SEPARATOR);
+        self::$cache_dir = null;
 
-        if (!is_dir(self::$cache_dir)) {
-            if (mkdir(self::$cache_dir, 0700)) {
+        if ($path !== null) {
+            if (!is_dir($path)) {
+                if (mkdir($path, 0700)) {
+                    self::$cache_enabled = true;
+                    self::$cache_dir = rtrim($path, DIRECTORY_SEPARATOR);
+                }
+            } elseif (!is_writable($path)) {
+                if (chmod($path, 0700)) {
+                    self::$cache_enabled = true;
+                    self::$cache_dir = rtrim($path, DIRECTORY_SEPARATOR);
+                }
+            } else {
                 self::$cache_enabled = true;
+                self::$cache_dir = rtrim($path, DIRECTORY_SEPARATOR);
             }
-        } elseif (!is_writable(self::$cache_dir)) {
-            if (chmod(self::$cache_dir, 0700)) {
-                self::$cache_enabled = true;
-            }
-        } else {
-            self::$cache_enabled = true;
         }
     }
 
     /* Multitone */
 
-    public static function instance($namespace = 'default', array $config = [], $file_path = null)
+    public static function instance($namespace = 'default')
     {
-        if ($namespace === null) {
-            if (self::$previous_namespace === null) {
-                return null;
-            }
-
-            $namespace = self::$previous_namespace;
+        // Temporary instance using an array object
+        if (is_array($namespace)) {
+            return (new self($namespace));
         }
 
-        if (!isset(self::$instances[$namespace])) {
-            return new Config($namespace, $config, $file_path);
+        // Return old instance
+        if (isset(self::$instances[$namespace])) {
+            return self::$instances[$namespace];
         }
 
-        self::$previous_namespace = $namespace;
+        // Create instance
+        return new self($namespace);
+    }
 
-        return self::$instances[$namespace];
+    /* Set */
+
+    public function set(array $config) {
+        $this->config_read_from_cache = false;
+        $this->config = $config;
+
+        return $this;
     }
 
     /* Load */
@@ -94,6 +109,8 @@ class Config
         $cache_file = null;
         $config = false;
         $filemtime = null;
+
+        $this->config_read_from_cache = false;
 
         if (self::$cache_enabled) {
             $cache_file_name = sha1($file_path) . '.php';
@@ -128,7 +145,7 @@ class Config
             Output::write($config, $cache_file, $file_path, $filemtime);
         }
 
-        self::merge($this->config, $config);
+        $this->config = $config;
 
         return $this;
     }
@@ -140,61 +157,44 @@ class Config
 
     /* Conf lookup */
 
-    public function get()
+    public function setRoot()
     {
-        $args = func_get_args();
-        return $this->getArray($args);
-    }
+        $argc = func_num_args();
 
-    private function getArray()
-    {
-        $args = func_get_args();
-        $args_count = func_num_args();
-
-        if ($args_count === 2) {
-            $root = $args[0];
-            $arr = $args[1];
-        } elseif ($args_count === 1) {
-            $root = $this->config;
-            $arr = $args[0];
+        if ($argc === 0) {
+            $this->root = null;
         } else {
-            return null;
+            $this->root = func_get_args();
         }
 
-        foreach ($arr as $node) {
-            if (strpos($node, '.') !== false) {
-                $nodes = explode('.', $node);
-                foreach ($nodes as $n) {
-                    if (isset($root[$n])) {
-                        $root = &$root[$n];
+        return $this;
+    }
+
+    public function get()
+    {
+        $keys = $this->root !== null ? $this->root : [];
+        if (func_num_args()) {
+            $keys = array_merge($keys, func_get_args());
+        }
+
+        $part = $this->config;
+        foreach ($keys as $key) {
+            if (strpos($key, '.') !== false) {
+                $key_parts = explode('.', $key);
+                foreach ($key_parts as $key_part) {
+                    if (isset($part[$key_part])) {
+                        $part = $part[$key_part];
                     } else {
                         return null;
                     }
                 }
+            } elseif (isset($part[$key])) {
+                $part = $part[$key];
             } else {
-                if (isset($root[$node])) {
-                    $root = &$root[$node];
-                } else {
-                    return null;
-                }
+                return null;
             }
         }
 
-        return $root;
-    }
-
-    public static function merge(array &$dst_config, array $config)
-    {
-        foreach ($config as $key => $value) {
-            if (is_string($key)) {
-                if (is_array($value) && array_key_exists($key, $dst_config) && is_array($dst_config[$key])) {
-                    self::merge($dst_config[$key], $value);
-                } else {
-                    $dst_config[$key] = $value;
-                }
-            } else {
-                $dst_config[] = $value;
-            }
-        }
+        return $part;
     }
 }

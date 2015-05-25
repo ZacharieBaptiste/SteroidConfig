@@ -1,3 +1,11 @@
-[]=dev,production
+# Simple key value config
+key=value
 
-#include config.included.txt
+# Config tree's
+key2.primary=value
+key2.secondary=value
+
+#include config.define_roots.txt
+#include config.define_sub_roots.txt
+#include config.multiline.txt
+#include config.special.txt

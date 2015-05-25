@@ -1,0 +1,21 @@
+# [@] is already defined as dev,production
+
+# Put special_case array under both dev and production
+[@]
+
+# Empty value
+special_case.1=
+
+# Basic keys with the value [ must be escaped
+special_case.2=\[
+
+# When ] in the beginning of a newline must be escaped
+special_case.3=[
+Lorem Ipsum is simply dummy text of the printing and typesetting industry.
+\]Lorem Ipsum has been the industry's standard dummy text ever since the 1500s,
+when an unknown printer took a galley of type and scrambled it to make a type specimen book.
+]
+
+# Write config next to defined roots
+[]
+special_case_root_key=This key will not be in the same level as dev and production keys

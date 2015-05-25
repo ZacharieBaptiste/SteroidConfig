@@ -1,9 +1,0 @@
-[@]
-locale=en_US
-thumbnails.large.width=640
-thumbnails.large.height=480
-thumbnails.small.width=80
-thumbnails.small.height=60
-
-[dev]
-locale=en_UK
