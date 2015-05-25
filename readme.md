@@ -29,7 +29,7 @@ Finish readme.md
 
 #### Changelog:
 
-v1.1 - Added support for config roots
+v1.1.0 - Added support for config roots
 	 - Added multiline support with filter support
 	 - More complete tests and config files with all supported syntaxes
 
