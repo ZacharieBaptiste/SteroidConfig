@@ -200,21 +200,21 @@ when an unknown printer took a galley of type and scrambled it to make a type sp
     public function testGetKeysFromSubConfig()
     {
         $config = Config::instance()->set($this->expected_arr);
-        $thumbnails = $config->get('production.thumbnails');
+        $thumbnails = $config->get('production.thumbnails', 'large');
 
         $width = Config::instance($thumbnails)->get('width');
 
-        $this->assertTrue($width === $this->expected_arr['production']['thumbnails']['width']);
+        $this->assertTrue($width === $this->expected_arr['production']['thumbnails']['large']['width']);
     }
 
     public function testGetKeysFromRootedSubConfig()
     {
         $config = Config::instance()->set($this->expected_arr)->setRoot('production');
-        $thumbnails = $config->get('thumbnails');
+        $large_thumbnails = $config->get('thumbnails', 'large');
 
-        $width = Config::instance($thumbnails)->get('width');
+        $width = Config::instance($large_thumbnails)->get('width');
 
-        $this->assertTrue($width === $this->expected_arr['production']['thumbnails']['width']);
+        $this->assertTrue($width === $this->expected_arr['production']['thumbnails']['large']['width']);
     }
 
 }
