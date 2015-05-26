@@ -22,7 +22,8 @@ abstract class Parser
         $definitions = [];
         $pre_roots = [];
 
-        for ($r = 0; $r < count($file); $r++) {
+	$count = count($file);
+        for ($r = 0; $r < $count; $r++) {
             $row = $file[$r];
             // Trim white space and comments
             $row = trim($row);
