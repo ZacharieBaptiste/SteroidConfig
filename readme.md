@@ -30,6 +30,8 @@ Documentation is still far from defined, all supported config's are listed and e
 
 #### Changelog:
 
+v1.1.1 - Refactored parser
+
 v1.1.0 - Added support for config roots
 	 - Added multiline support with filter support
 	 - More complete tests and config files with all supported syntaxes
