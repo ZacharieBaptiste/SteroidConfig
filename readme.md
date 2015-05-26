@@ -1,7 +1,7 @@
 ## Steroid Config
 [![Build Status](https://travis-ci.org/ZacharieBaptiste/SteroidConfig.svg?branch=master)](https://travis-ci.org/ZacharieBaptiste/SteroidConfig)
 [![Coverage Status](https://coveralls.io/repos/ZacharieBaptiste/SteroidConfig/badge.svg)](https://coveralls.io/r/ZacharieBaptiste/SteroidConfig)
-[![SensioLabsInsight](https://insight.sensiolabs.com/projects/25eab8de-8a2b-4d11-bb15-8057c5970a4a/mini.png)](https://insight.sensiolabs.com/projects/44c425af-90f6-4c25-b789-4ece28b01a2b)
+[![SensioLabsInsight](https://insight.sensiolabs.com/projects/25eab8de-8a2b-4d11-bb15-8057c5970a4a/mini.png)](https://insight.sensiolabs.com/projects/25eab8de-8a2b-4d11-bb15-8057c5970a4a)
 [![Latest Stable Version](https://poser.pugx.org/steroid/config/v/stable.svg)](https://packagist.org/packages/steroid/config)
 [![Monthly Downloads](https://poser.pugx.org/steroid/config/d/monthly.png)](https://packagist.org/packages/steroid/config)
 
