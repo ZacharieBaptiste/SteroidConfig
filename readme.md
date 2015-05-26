@@ -1,6 +1,8 @@
 ## Steroid Config
 [![Build Status](https://travis-ci.org/ZacharieBaptiste/SteroidConfig.svg?branch=master)](https://travis-ci.org/ZacharieBaptiste/SteroidConfig)
 [![Coverage Status](https://coveralls.io/repos/ZacharieBaptiste/SteroidConfig/badge.svg)](https://coveralls.io/r/ZacharieBaptiste/SteroidConfig)
+[![Latest Stable Version](https://poser.pugx.org/steroid/config/v/stable.svg)](https://packagist.org/packages/steroid/config)
+[![Monthly Downloads](https://poser.pugx.org/steroid/config/d/monthly.png)](https://packagist.org/packages/steroid/config)
 
 #### Installation:
 "steroid/config": "~1.0"
@@ -24,9 +26,6 @@ $locale = Config::instance()->get('locale');
 
 #### Config file syntax:
 Documentation is still far from defined, all supported config's are listed and explained shortly in tests/files
-
-#### Todo:
-Finish readme.md
 
 #### Changelog:
 
