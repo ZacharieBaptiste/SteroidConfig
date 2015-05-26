@@ -10,173 +10,45 @@ namespace Steroid\Config;
 
 abstract class Parser
 {
-    public static function parse($conf, $chdir = null)
+    public static function parse($conf)
     {
-        if ($chdir !== false) {
-            if ($chdir === null) {
-                $chdir = dirname($conf);
-            }
-        }
+        $chdir = dirname($conf);
 
         $file = self::includeConf($conf, $chdir);
         $definitions = [];
-        $pre_roots = [];
+        $current_roots = [];
+        $config = [];
 
-	$count = count($file);
-        for ($r = 0; $r < $count; $r++) {
-            $row = $file[$r];
+        $number_of_lines = count($file);
+        for ($line_number = 0; $line_number < $number_of_lines; $line_number++) {
+            $line = $file[$line_number];
+
             // Trim white space and comments
-            $row = trim($row);
-            $row = preg_replace('/\s*#.*/', '', $row);
-            if (empty($row)) {
+            $line = trim($line);
+            $line = preg_replace('/\s*#.*/', '', $line);
+            if (empty($line)) {
+                // Ignore line
                 continue;
             }
 
             // Check for root definitions
-            if (preg_match('/^(\[[^]]+\])?\[\]=/', $row)) {
-                list ($keys, $values) = explode('=', $row);
-
-                $parent_keys = trim(substr($keys, 0, -2), '[]');
-                $values = explode(',', $values);
-
-                $node = &$definitions;
-
-                if (strlen($parent_keys)) {
-                    $parent_keys = explode('.', $parent_keys);
-                    foreach ($parent_keys as $key) {
-                        if (!isset($node[$key])) {
-                            $node[$key] = [];
-                        }
-                        $node = &$node[$key];
-                    }
-                }
-
-                $node['@'] = $values;
-
-                unset($node);
-            } // Set current root
-            elseif (preg_match('/^\[[^]]*\]$/', $row)) {
-                $pre_root_str = trim($row, '[]');
-                if (empty($pre_root_str)) {
-                    // Reset pre roots
-                    $pre_roots = [];
-                } else {
-                    // Set pre roots
-                    $pre_roots = explode(',', $pre_root_str);
-                    foreach ($pre_roots as $idx => $pr) {
-                        $pre_roots[$idx] = explode('.', $pr);
-                    }
-                }
-            } // Update config
+            if (preg_match('/^(\[[^]]+\])?\[\]=/', $line)) {
+                // Parse definition and add to list of definitions
+                self::parsePredefinedRootDefinition($line, $definitions);
+            } // Check for root changes during parsing
+            elseif (preg_match('/^\[[^]]*\]$/', $line)) {
+                // Set roots for parser, lines below are prefixed with current root
+                $current_roots = self::setCurrentRootsForParser($line);
+            } // Read config key and values
             else {
-                list ($keys, $value) = explode('=', $row, 2);
-                $keys = explode('.', $keys);
-
-                // Check for value blocks
-                if (preg_match('/^\[((?P<filter>[a-zA-Z0-9_]+)\]\[)?$/', $value, $matches)) {
-                    $filter = null;
-                    if (isset($matches['filter'])) {
-                        $filter = $matches['filter'];
-                    }
-
-                    $value_str = '';
-                    while (true) {
-                        $r++;
-                        $rv = $file[$r];
-                        if (trim($rv) === ']') {
-                            break;
-                        }
-
-                        if (strlen($value_str)) {
-                            $value_str .= "\n";
-                        }
-
-                        // Fix escaped ]
-                        if (substr($rv, 0, 2) == '\]') {
-                            $rv = substr($rv, 1);
-                        }
-
-                        $value_str .= $rv;
-                    }
-                    $value = trim($value_str);
-
-                    if ($filter) {
-                        $value = self::filter($value, $filter);
-                    }
-                } else {
-                    if ($value === '\[') {
-                        $value = substr($value, 1);
-                    }
-                }
-
-                if (!empty($pre_roots)) {
-                    foreach ($pre_roots as $pr) {
-                        // Point to root of config
-                        $node = &$config;
-
-                        // If under current root, move pointer to leaf
-                        foreach ($pr as $key) {
-                            if (!isset($node[$key])) {
-                                $node[$key] = [];
-                            }
-                            $node = &$node[$key];
-                        }
-
-                        // Move node to leaf
-                        foreach ($keys as $key) {
-                            if (!isset($node[$key])) {
-                                $node[$key] = [];
-                            }
-                            $node = &$node[$key];
-                        }
-
-                        // Set the value to the node
-                        if ($node) {
-                            self::exception("Double set:" . $row);
-                        }
-
-                        if (strcmp($value, (int)$value) == 0) {
-                            $node = (int)$value;
-                        } else {
-                            $node = $value;
-                        }
-
-                        unset($node);
-                    }
-                } else {
-                    // Point to root of config
-                    $node = &$config;
-
-                    // Move node to leaf
-                    foreach ($keys as $key) {
-                        if (!isset($node[$key])) {
-                            $node[$key] = [];
-                        } elseif (!is_array($node[$key])) {
-                            self::exception("Array node error: row:" . $row);
-                        }
-                        $node = &$node[$key];
-                    }
-
-                    // Set the value to the node
-                    if ($node) {
-                        self::exception("Double set:" . $row);
-                    }
-
-                    if (strcmp($value, (int)$value) == 0) {
-                        $node = (int)$value;
-                    } else {
-                        $node = $value;
-                    }
-
-                    unset($node);
-                }
+                $line_number = self::parseConfigKeyValue($file, $line_number, $line, $current_roots, $config);
             }
         }
 
-        if (!isset($config)) {
-            return [];
+        if (!empty($config)) {
+            $config = self::expandConfig($config, $definitions);
         }
-        $config = self::expandConfig($config, $definitions);
+
         return $config;
     }
 
@@ -212,7 +84,7 @@ abstract class Parser
         return $config;
     }
 
-    private static function getDefinition($keys, $definitions)
+    private static function getPredefinedRootDefinition($keys, $definitions)
     {
         $node = $definitions;
         foreach ($keys as $key) {
@@ -251,7 +123,7 @@ abstract class Parser
                 $star = $config['@'];
                 $arr = $trail;
                 $arr[] = '@';
-                $def = self::getDefinition($arr, $definitions);
+                $def = self::getPredefinedRootDefinition($arr, $definitions);
             }
 
             if ($def) {
@@ -274,7 +146,7 @@ abstract class Parser
             } else {
                 foreach ($config as $idx => $node) {
                     if (!is_array($node)) {
-                        // Node reached isn't an array, don't recurse int it!
+                        // Node reached isn't an array, don't recurse into it!
                         if ($star) {
                             self::exception("Expand error: idx:" . $idx . " node:" . $node);
                         }
@@ -300,7 +172,7 @@ abstract class Parser
         return $config;
     }
 
-    public static function merge(array &$dst_config, array $config)
+    private static function merge(array &$dst_config, array $config)
     {
         foreach ($config as $key => $value) {
             if (is_string($key)) {
@@ -331,5 +203,139 @@ abstract class Parser
     private static function exception($str)
     {
         throw new \Exception(__NAMESPACE__ . "Exception: {$str}");
+    }
+
+    private static function parsePredefinedRootDefinition($line, &$definitions)
+    {
+        list ($keys, $values) = explode('=', $line);
+
+        $parent_keys = trim(substr($keys, 0, -2), '[]');
+        $values = explode(',', $values);
+
+        $node =& $definitions;
+        if (strlen($parent_keys)) {
+            $parent_keys = explode('.', $parent_keys);
+            foreach ($parent_keys as $key) {
+                if (!isset($node[$key])) {
+                    $node[$key] = [];
+                }
+                $node = &$node[$key];
+            }
+        }
+
+        $node['@'] = $values;
+    }
+
+    private static function setCurrentRootsForParser($line)
+    {
+        $root_str = trim($line, '[]');
+        if (empty($root_str)) {
+            // Reset root
+            return [];
+        }
+
+        // Set current roots
+        $roots = explode(',', $root_str);
+        foreach ($roots as $idx => $root) {
+            $roots[$idx] = explode('.', $root);
+        }
+        return $roots;
+    }
+
+    private static function parseConfigKeyValue($file, $line_number, $line, $current_roots, &$config)
+    {
+        list ($keys, $value) = explode('=', $line, 2);
+
+        // Extract the value
+        list($line_number, $value) = self::parseConfigValue($file, $line_number, $value);
+
+        // If no roots specified, then use an empty root
+        if (empty($current_roots)) {
+            $current_roots[] = [];
+        }
+
+        $keys = explode('.', $keys);
+
+        // For every root, and sub keys set the value
+        foreach ($current_roots as $root) {
+            // Point to root of config
+            $node = &$config;
+
+            // If under current root, move pointer to leaf
+            foreach ($root as $key) {
+                if (!isset($node[$key])) {
+                    $node[$key] = [];
+                }
+                $node = &$node[$key];
+            }
+
+            // Move node to leaf
+            foreach ($keys as $key) {
+                if (!isset($node[$key])) {
+                    $node[$key] = [];
+                }
+                $node = &$node[$key];
+            }
+
+            // Set the value to the node
+            if ($node) {
+                self::exception("Double set:" . $line);
+            }
+
+            if (strcmp($value, (int)$value) == 0) {
+                $node = (int)$value;
+            } else {
+                $node = $value;
+            }
+
+            unset($node);
+        }
+
+        return $line_number;
+    }
+
+    private static function parseConfigValue($file, $line_number, $value)
+    {
+        // Check for value blocks - Multiline blocks
+        if (preg_match('/^\[((?P<filter>[a-zA-Z0-9_]+)\]\[)?$/', $value, $matches)) {
+            $filter = null;
+            if (isset($matches['filter'])) {
+                $filter = $matches['filter'];
+            }
+
+            $value_str = '';
+            while (true) {
+                $line_number++;
+                $multiline = $file[$line_number];
+
+                if (trim($multiline) === ']') {
+                    break;
+                }
+
+                if (strlen($value_str)) {
+                    $value_str .= "\n";
+                }
+
+                // Fix escaped ]
+                if (substr($multiline, 0, 2) == '\]') {
+                    $multiline = substr($multiline, 1);
+                }
+
+                $value_str .= $multiline;
+            }
+            $value = trim($value_str);
+
+            if ($filter) {
+                $value = self::filter($value, $filter);
+                return array($line_number, $value);
+            }
+            return array($line_number, $value);
+        } elseif ($value === '\[') {
+            // Value is only an escaped block, remove slashes
+            $value = substr($value, 1);
+            return array($line_number, $value);
+        }
+
+        return array($line_number, $value);
     }
 }
