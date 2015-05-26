@@ -1,5 +1,6 @@
 ## Steroid Config
 [![Build Status](https://travis-ci.org/ZacharieBaptiste/SteroidConfig.svg?branch=master)](https://travis-ci.org/ZacharieBaptiste/SteroidConfig)
+[![Coverage Status](https://coveralls.io/repos/ZacharieBaptiste/SteroidConfig/badge.svg)](https://coveralls.io/r/ZacharieBaptiste/SteroidConfig)
 
 #### Installation:
 "steroid/config": "~1.0"
