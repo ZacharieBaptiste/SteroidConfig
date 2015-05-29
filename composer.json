@@ -1,6 +1,7 @@
 {
     "name": "steroid/config",
     "description": "Steroid Config",
+    "version": "v1.1.1",
     "license": "MIT",
     "authors": [
         {
